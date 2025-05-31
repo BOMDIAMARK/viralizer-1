@@ -70,11 +70,11 @@ interface FalInferenceResponse {
 }
 
 const getFalHeaders = () => {
-  if (!process.env.FAL_KEY) {
-    throw new Error("FAL_KEY environment variable is not set.")
+  if (!process.env.FAL_API_KEY) {
+    throw new Error("FAL_API_KEY environment variable is not set.")
   }
   return {
-    Authorization: `Bearer ${process.env.FAL_KEY}`,
+    Authorization: `Bearer ${process.env.FAL_API_KEY}`,
     "Content-Type": "application/json",
   }
 }
