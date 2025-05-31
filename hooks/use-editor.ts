@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useErrorHandler, withErrorHandling } from "@/lib/error-handler"
 
 interface EditorState {
   currentImage: string | null
@@ -18,6 +19,8 @@ export function useEditor() {
     history: [],
     historyIndex: -1,
   })
+
+  const { handleError, handleSuccess } = useErrorHandler()
 
   const setImage = useCallback((imageUrl: string) => {
     setState((prev) => ({
@@ -69,293 +72,406 @@ export function useEditor() {
     async (prompt: string) => {
       setState((prev) => ({ ...prev, isProcessing: true }))
 
-      try {
-        const response = await fetch("/api/editor", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "generate",
-            prompt,
-          }),
-        })
+      const { data, error } = await withErrorHandling(
+        async () => {
+          const response = await fetch("/api/editor", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "generate",
+              prompt,
+            }),
+          })
 
-        if (!response.ok) {
-          throw new Error("Falha na geração")
-        }
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Falha na geração")
+          }
 
-        const data = await response.json()
+          return response.json()
+        },
+        { operation: "generateFromText", prompt: prompt.substring(0, 100) },
+      )
+
+      setState((prev) => ({ ...prev, isProcessing: false }))
+
+      if (error) {
+        handleError(error)
+        return null
+      }
+
+      if (data) {
         const imageUrl = Array.isArray(data.result) ? data.result[0] : data.result
-
         addToHistory(imageUrl)
-
-        // Gerar variações
         setState((prev) => ({
           ...prev,
           variations: data.variations || [],
-          isProcessing: false,
         }))
-      } catch (error) {
-        console.error("Erro ao gerar imagem:", error)
-        setState((prev) => ({ ...prev, isProcessing: false }))
-        throw error
+        handleSuccess("Imagem gerada com sucesso!")
+        return data.result
       }
+
+      return null
     },
-    [addToHistory],
+    [addToHistory, handleError, handleSuccess],
   )
 
   const editWithPrompt = useCallback(
     async (prompt: string) => {
-      if (!state.currentImage) return
+      if (!state.currentImage) {
+        handleError(new Error("Nenhuma imagem selecionada"))
+        return null
+      }
 
       setState((prev) => ({ ...prev, isProcessing: true }))
 
-      try {
-        const response = await fetch("/api/editor", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "edit",
-            prompt,
-            imageUrl: state.currentImage,
-          }),
-        })
+      const { data, error } = await withErrorHandling(
+        async () => {
+          const response = await fetch("/api/editor", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "edit",
+              prompt,
+              imageUrl: state.currentImage,
+            }),
+          })
 
-        if (!response.ok) {
-          throw new Error("Falha na edição")
-        }
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Falha na edição")
+          }
 
-        const data = await response.json()
+          return response.json()
+        },
+        { operation: "editWithPrompt", prompt: prompt.substring(0, 100) },
+      )
+
+      setState((prev) => ({ ...prev, isProcessing: false }))
+
+      if (error) {
+        handleError(error)
+        return null
+      }
+
+      if (data) {
         const imageUrl = Array.isArray(data.result) ? data.result[0] : data.result
-
         addToHistory(imageUrl)
-
         setState((prev) => ({
           ...prev,
           variations: data.variations || [],
-          isProcessing: false,
         }))
-      } catch (error) {
-        console.error("Erro ao editar imagem:", error)
-        setState((prev) => ({ ...prev, isProcessing: false }))
-        throw error
+        handleSuccess("Imagem editada com sucesso!")
+        return data.result
       }
+
+      return null
     },
-    [state.currentImage, addToHistory],
+    [state.currentImage, addToHistory, handleError, handleSuccess],
   )
 
   const inpaint = useCallback(
     async (prompt: string, maskUrl: string) => {
-      if (!state.currentImage) return
+      if (!state.currentImage) {
+        handleError(new Error("Nenhuma imagem selecionada"))
+        return null
+      }
 
       setState((prev) => ({ ...prev, isProcessing: true }))
 
-      try {
-        const response = await fetch("/api/editor", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "inpaint",
-            prompt,
-            imageUrl: state.currentImage,
-            maskUrl,
-          }),
-        })
+      const { data, error } = await withErrorHandling(
+        async () => {
+          const response = await fetch("/api/editor", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "inpaint",
+              prompt,
+              imageUrl: state.currentImage,
+              maskUrl,
+            }),
+          })
 
-        if (!response.ok) {
-          throw new Error("Falha no inpainting")
-        }
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Falha no inpainting")
+          }
 
-        const data = await response.json()
+          return response.json()
+        },
+        { operation: "inpaint", prompt: prompt.substring(0, 100) },
+      )
+
+      setState((prev) => ({ ...prev, isProcessing: false }))
+
+      if (error) {
+        handleError(error)
+        return null
+      }
+
+      if (data) {
         const imageUrl = Array.isArray(data.result) ? data.result[0] : data.result
-
         addToHistory(imageUrl)
-
         setState((prev) => ({
           ...prev,
           variations: data.variations || [],
-          isProcessing: false,
         }))
-      } catch (error) {
-        console.error("Erro no inpainting:", error)
-        setState((prev) => ({ ...prev, isProcessing: false }))
-        throw error
+        handleSuccess("Área editada com sucesso!")
+        return data.result
       }
+
+      return null
     },
-    [state.currentImage, addToHistory],
+    [state.currentImage, addToHistory, handleError, handleSuccess],
   )
 
   const upscale = useCallback(async () => {
-    if (!state.currentImage) return
+    if (!state.currentImage) {
+      handleError(new Error("Nenhuma imagem selecionada"))
+      return null
+    }
 
     setState((prev) => ({ ...prev, isProcessing: true }))
 
-    try {
-      const response = await fetch("/api/editor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "upscale",
-          imageUrl: state.currentImage,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Falha no upscale")
-      }
-
-      const data = await response.json()
-      addToHistory(data.result)
-
-      setState((prev) => ({ ...prev, isProcessing: false }))
-    } catch (error) {
-      console.error("Erro no upscale:", error)
-      setState((prev) => ({ ...prev, isProcessing: false }))
-      throw error
-    }
-  }, [state.currentImage, addToHistory])
-
-  const removeBackground = useCallback(async () => {
-    if (!state.currentImage) return
-
-    setState((prev) => ({ ...prev, isProcessing: true }))
-
-    try {
-      const response = await fetch("/api/editor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "removeBackground",
-          imageUrl: state.currentImage,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Falha na remoção de fundo")
-      }
-
-      const data = await response.json()
-      addToHistory(data.result)
-
-      setState((prev) => ({ ...prev, isProcessing: false }))
-    } catch (error) {
-      console.error("Erro na remoção de fundo:", error)
-      setState((prev) => ({ ...prev, isProcessing: false }))
-      throw error
-    }
-  }, [state.currentImage, addToHistory])
-
-  const enhance = useCallback(async () => {
-    if (!state.currentImage) return
-
-    setState((prev) => ({ ...prev, isProcessing: true }))
-
-    try {
-      const response = await fetch("/api/editor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "enhance",
-          imageUrl: state.currentImage,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Falha no enhancement")
-      }
-
-      const data = await response.json()
-      addToHistory(data.result)
-
-      setState((prev) => ({ ...prev, isProcessing: false }))
-    } catch (error) {
-      console.error("Erro no enhancement:", error)
-      setState((prev) => ({ ...prev, isProcessing: false }))
-      throw error
-    }
-  }, [state.currentImage, addToHistory])
-
-  const controlNet = useCallback(
-    async (prompt: string) => {
-      if (!state.currentImage) return
-
-      setState((prev) => ({ ...prev, isProcessing: true }))
-
-      try {
+    const { data, error } = await withErrorHandling(
+      async () => {
         const response = await fetch("/api/editor", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            action: "controlnet",
-            prompt,
+            action: "upscale",
             imageUrl: state.currentImage,
           }),
         })
 
         if (!response.ok) {
-          throw new Error("Falha no ControlNet")
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Falha no upscale")
         }
 
-        const data = await response.json()
-        addToHistory(data.result)
+        return response.json()
+      },
+      { operation: "upscale" },
+    )
 
-        setState((prev) => ({ ...prev, isProcessing: false }))
-      } catch (error) {
-        console.error("Erro no ControlNet:", error)
-        setState((prev) => ({ ...prev, isProcessing: false }))
-        throw error
+    setState((prev) => ({ ...prev, isProcessing: false }))
+
+    if (error) {
+      handleError(error)
+      return null
+    }
+
+    if (data) {
+      addToHistory(data.result)
+      handleSuccess("Imagem ampliada com sucesso!")
+      return data.result
+    }
+
+    return null
+  }, [state.currentImage, addToHistory, handleError, handleSuccess])
+
+  const removeBackground = useCallback(async () => {
+    if (!state.currentImage) {
+      handleError(new Error("Nenhuma imagem selecionada"))
+      return null
+    }
+
+    setState((prev) => ({ ...prev, isProcessing: true }))
+
+    const { data, error } = await withErrorHandling(
+      async () => {
+        const response = await fetch("/api/editor", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "removeBackground",
+            imageUrl: state.currentImage,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Falha na remoção de fundo")
+        }
+
+        return response.json()
+      },
+      { operation: "removeBackground" },
+    )
+
+    setState((prev) => ({ ...prev, isProcessing: false }))
+
+    if (error) {
+      handleError(error)
+      return null
+    }
+
+    if (data) {
+      addToHistory(data.result)
+      handleSuccess("Fundo removido com sucesso!")
+      return data.result
+    }
+
+    return null
+  }, [state.currentImage, addToHistory, handleError, handleSuccess])
+
+  const enhance = useCallback(async () => {
+    if (!state.currentImage) {
+      handleError(new Error("Nenhuma imagem selecionada"))
+      return null
+    }
+
+    setState((prev) => ({ ...prev, isProcessing: true }))
+
+    const { data, error } = await withErrorHandling(
+      async () => {
+        const response = await fetch("/api/editor", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "enhance",
+            imageUrl: state.currentImage,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Falha no enhancement")
+        }
+
+        return response.json()
+      },
+      { operation: "enhance" },
+    )
+
+    setState((prev) => ({ ...prev, isProcessing: false }))
+
+    if (error) {
+      handleError(error)
+      return null
+    }
+
+    if (data) {
+      addToHistory(data.result)
+      handleSuccess("Imagem melhorada com sucesso!")
+      return data.result
+    }
+
+    return null
+  }, [state.currentImage, addToHistory, handleError, handleSuccess])
+
+  const controlNet = useCallback(
+    async (prompt: string) => {
+      if (!state.currentImage) {
+        handleError(new Error("Nenhuma imagem selecionada"))
+        return null
       }
+
+      setState((prev) => ({ ...prev, isProcessing: true }))
+
+      const { data, error } = await withErrorHandling(
+        async () => {
+          const response = await fetch("/api/editor", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "controlnet",
+              prompt,
+              imageUrl: state.currentImage,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Falha no ControlNet")
+          }
+
+          return response.json()
+        },
+        { operation: "controlNet", prompt: prompt.substring(0, 100) },
+      )
+
+      setState((prev) => ({ ...prev, isProcessing: false }))
+
+      if (error) {
+        handleError(error)
+        return null
+      }
+
+      if (data) {
+        addToHistory(data.result)
+        handleSuccess("Imagem transformada com sucesso!")
+        return data.result
+      }
+
+      return null
     },
-    [state.currentImage, addToHistory],
+    [state.currentImage, addToHistory, handleError, handleSuccess],
   )
 
   const realtimeEdit = useCallback(
     async (prompt: string) => {
-      if (!state.currentImage) return
+      if (!state.currentImage) {
+        handleError(new Error("Nenhuma imagem selecionada"))
+        return null
+      }
 
       setState((prev) => ({ ...prev, isProcessing: true }))
 
-      try {
-        const response = await fetch("/api/editor", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "realtime",
-            prompt,
-            imageUrl: state.currentImage,
-          }),
-        })
+      const { data, error } = await withErrorHandling(
+        async () => {
+          const response = await fetch("/api/editor", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "realtime",
+              prompt,
+              imageUrl: state.currentImage,
+            }),
+          })
 
-        if (!response.ok) {
-          throw new Error("Falha na edição em tempo real")
-        }
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Falha na edição em tempo real")
+          }
 
-        const data = await response.json()
-        addToHistory(data.result)
+          return response.json()
+        },
+        { operation: "realtimeEdit", prompt: prompt.substring(0, 100) },
+      )
 
-        setState((prev) => ({ ...prev, isProcessing: false }))
-      } catch (error) {
-        console.error("Erro na edição em tempo real:", error)
-        setState((prev) => ({ ...prev, isProcessing: false }))
-        throw error
+      setState((prev) => ({ ...prev, isProcessing: false }))
+
+      if (error) {
+        handleError(error)
+        return null
       }
+
+      if (data) {
+        addToHistory(data.result)
+        handleSuccess("Edição realizada com sucesso!")
+        return data.result
+      }
+
+      return null
     },
-    [state.currentImage, addToHistory],
+    [state.currentImage, addToHistory, handleError, handleSuccess],
   )
 
   return {

@@ -1,16 +1,16 @@
 import type React from "react"
-import "./globals.css"
+import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import Header from "@/components/header"
-import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
-  title: "Viralizer - Plataforma de Geração de Imagens com IA para Creators",
-  description: "Crie imagens incríveis com IA, treine seus próprios modelos e potencialize seu conteúdo.",
+export const metadata: Metadata = {
+  title: "Viralizer - Crie Thumbnails que Convertem",
+  description: "Plataforma de IA para criar thumbnails de YouTube que maximizam CTR",
     generator: 'v0.dev'
 }
 
@@ -22,14 +22,12 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </div>
-          <Toaster />
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )
