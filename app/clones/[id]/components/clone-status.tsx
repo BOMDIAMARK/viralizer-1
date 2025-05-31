@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertCircle, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import type { Database } from "@/types/supabase"
+import { CardDescription } from "@/components/ui/card"
 
 type Clone = Database["public"]["Tables"]["clones"]["Row"]
 
@@ -16,7 +17,15 @@ interface CloneStatusProps {
 interface CloneMetadata {
   progress?: number
   error?: string | { message?: string }
-  falConfig?: any
+  falConfig?: {
+    trigger_word?: string
+    steps?: number
+    batch_size?: number
+    lr?: number
+    num_epochs?: number
+    guidance_scale?: number
+    seed?: number
+  }
   [key: string]: any // Allow other properties
 }
 
@@ -123,6 +132,25 @@ export default function CloneStatus({ initialClone }: CloneStatusProps) {
             <Badge variant="default" className="bg-green-500 hover:bg-green-600">
               Pronto para Uso
             </Badge>
+            {metadata?.falConfig && (
+              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700 w-full text-left">
+                <CardDescription className="text-xs text-green-600 dark:text-green-400 mb-1">
+                  Configuração do Treinamento:
+                </CardDescription>
+                <ul className="text-xs text-green-600 dark:text-green-400 space-y-0.5">
+                  <li>Palavra-gatilho: {metadata.falConfig.trigger_word}</li>
+                  <li>
+                    Passos: {metadata.falConfig.steps}, Épocas: {metadata.falConfig.num_epochs}
+                  </li>
+                  <li>
+                    Batch: {metadata.falConfig.batch_size}, LR: {metadata.falConfig.lr}
+                  </li>
+                  <li>
+                    Guidance: {metadata.falConfig.guidance_scale}, Seed: {metadata.falConfig.seed}
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         )
       case "training_processing":
@@ -150,6 +178,25 @@ export default function CloneStatus({ initialClone }: CloneStatusProps) {
               </p>
             )}
             <Badge variant="destructive">Falhou</Badge>
+            {metadata?.falConfig && (
+              <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-700 w-full text-left">
+                <CardDescription className="text-xs text-red-600 dark:text-red-400 mb-1">
+                  Configuração Tentada:
+                </CardDescription>
+                <ul className="text-xs text-red-600 dark:text-red-400 space-y-0.5">
+                  <li>Palavra-gatilho: {metadata.falConfig.trigger_word}</li>
+                  <li>
+                    Passos: {metadata.falConfig.steps}, Épocas: {metadata.falConfig.num_epochs}
+                  </li>
+                  <li>
+                    Batch: {metadata.falConfig.batch_size}, LR: {metadata.falConfig.lr}
+                  </li>
+                  <li>
+                    Guidance: {metadata.falConfig.guidance_scale}, Seed: {metadata.falConfig.seed}
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         )
       default: // Includes 'draft', 'archived', or any other non-training status

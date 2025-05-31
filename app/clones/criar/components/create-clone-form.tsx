@@ -14,6 +14,7 @@ import { createClone } from "../actions"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ImageQualityIndicators } from "./image-quality-indicators"
 
 interface CreateCloneFormProps {
   userId: string
@@ -53,6 +54,7 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
   const [trainingStatus, setTrainingStatus] = useState<string | null>(null)
   const [trainingProgress, setTrainingProgress] = useState(0)
   const [falTrainId, setFalTrainId] = useState<string | null>(null)
+  const [imageQualityMet, setImageQualityMet] = useState(false)
 
   const router = useRouter()
 
@@ -203,6 +205,10 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
     return () => clearInterval(intervalId)
   }, [falTrainId, isLoading, router, trainingProgress])
 
+  useEffect(() => {
+    setImageQualityMet(images.length >= 3 && images.length <= 10)
+  }, [images.length])
+
   if (isLoading && falTrainId) {
     return (
       <Card className="w-full max-w-lg mx-auto">
@@ -211,7 +217,8 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
           <CardDescription>Aguarde enquanto a IA aprende seu estilo. Isso pode levar alguns minutos.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
+          <ImageQualityIndicators imageCount={images.length} />
+          <div className="flex items-center space-x-2 pt-4">
             <Loader2 className="h-5 w-5 animate-spin" />
             <p className="text-sm text-muted-foreground">{trainingStatus}</p>
           </div>
@@ -324,6 +331,12 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
                   <span className="mt-1 text-xs">Adicionar</span>
                 </button>
               )}
+            </div>
+          )}
+
+          {images.length > 0 && (
+            <div className="mt-4">
+              <ImageQualityIndicators imageCount={images.length} />
             </div>
           )}
 
@@ -455,7 +468,7 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
           )}
 
           <div className="pt-4 border-t">
-            <Button type="submit" className="w-full" disabled={isLoading || images.length < 3}>
+            <Button type="submit" className="w-full" disabled={isLoading || !imageQualityMet}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Treinando...
