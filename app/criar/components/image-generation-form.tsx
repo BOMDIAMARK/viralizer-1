@@ -78,10 +78,14 @@ export default function ImageGenerationForm({ userId, credits, isPremium, userCl
   const router = useRouter()
 
   // Get the currently selected model's name for display
-  const currentImageModelName = useMemo(() => {
+  const currentModelDisplayInfo = useMemo(() => {
+    if (activeTab === "clone" && cloneId) {
+      const selectedClone = userClones.find((c) => c.id === cloneId)
+      return selectedClone ? { name: selectedClone.name, type: "Clone" } : { name: "Clone Selecionado", type: "Clone" }
+    }
     const model = availableImageModels.find((m) => m.id === imageModel)
-    return model ? model.name : "Modelo Desconhecido"
-  }, [imageModel, availableImageModels])
+    return model ? { name: model.name, type: "Modelo IA" } : { name: "Modelo Desconhecido", type: "Modelo IA" }
+  }, [activeTab, cloneId, userClones, imageModel, availableImageModels])
 
   const selectedStyle = predefinedStyles.find((s) => s.id === style)
   const selectedSize = imageSizes.find((s) => s.id === imageSize)
@@ -163,14 +167,16 @@ export default function ImageGenerationForm({ userId, credits, isPremium, userCl
         result = await generateImage({
           prompt,
           negativePrompt,
+          // Pass "clone" as style if activeTab is clone, otherwise pass the selected style
           style: activeTab === "clone" ? "clone" : style,
           userId,
+          // Pass the selected cloneId if activeTab is clone, otherwise null
           cloneId: activeTab === "clone" ? cloneId : null,
           imageSize,
           guidanceScale: guidanceScale[0],
           numInferenceSteps: numInferenceSteps[0],
           seed: seed ? Number.parseInt(seed) : undefined,
-          modelId: imageModel, // Pass the selected image model
+          modelId: imageModel, // This is the Replicate model ID, or base model for Fal.ai
         })
       }
 
@@ -228,7 +234,7 @@ export default function ImageGenerationForm({ userId, credits, isPremium, userCl
         {isLoading ? (
           <div className="flex flex-col items-center justify-center w-full h-full animate-pulse bg-gray-200 dark:bg-gray-700">
             <div className="w-16 h-16 mb-4 border-4 border-t-violet-500 border-violet-200 rounded-full animate-spin dark:border-t-violet-400 dark:border-violet-700" />
-            <p className="text-lg text-gray-600 dark:text-gray-400">{`Gerando com ${currentImageModelName}...`}</p>
+            <p className="text-lg text-gray-600 dark:text-gray-400">{`Gerando com ${currentModelDisplayInfo.name} (${currentModelDisplayInfo.type})...`}</p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Isso pode levar até 30 segundos</p>
           </div>
         ) : preview ? (
@@ -489,7 +495,9 @@ export default function ImageGenerationForm({ userId, credits, isPremium, userCl
       {/* Model Selector at bottom left */}
       <div className="absolute bottom-4 left-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
         <span className="font-medium">Modelo:</span>
-        <Badge variant="secondary">{currentImageModelName}</Badge>
+        <Badge variant="secondary">
+          {currentModelDisplayInfo.name} ({currentModelDisplayInfo.type})
+        </Badge>
       </div>
 
       {/* Test Connection Button at bottom right (for dev/debug) */}
