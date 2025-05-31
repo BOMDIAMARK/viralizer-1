@@ -8,36 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { AlertCircle, Upload, X, ImageIcon, Info, Settings, Loader2 } from "lucide-react"
+import { AlertCircle, Upload, X, ImageIcon, Info, Loader2, CheckCircle } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { createClone } from "../actions"
-import { Progress } from "@/components/ui/progress"
+import { ImageQualityIndicators } from "./image-quality-indicators" // Assuming this is still useful
 import { Slider } from "@/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ImageQualityIndicators } from "./image-quality-indicators"
 
 interface CreateCloneFormProps {
   userId: string
-}
-
-interface FalConfig {
-  triggerWord: string
-  steps: number
-  batchSize: number
-  learningRate: number
-  numEpochs: number
-  guidanceScale: number
-  seed: number
-}
-
-const defaultFalConfig: FalConfig = {
-  triggerWord: "",
-  steps: 100,
-  batchSize: 4,
-  learningRate: 1e-4,
-  numEpochs: 3,
-  guidanceScale: 7.5,
-  seed: 2025,
 }
 
 export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
@@ -46,14 +24,12 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
   const [images, setImages] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
 
-  const [falConfig, setFalConfig] = useState<FalConfig>(defaultFalConfig)
-  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false)
+  const [triggerWord, setTriggerWord] = useState("")
+  const [steps, setSteps] = useState(750) // Default steps for fast training
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [trainingStatus, setTrainingStatus] = useState<string | null>(null)
-  const [trainingProgress, setTrainingProgress] = useState(0)
-  const [falTrainId, setFalTrainId] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [imageQualityMet, setImageQualityMet] = useState(false)
 
   const router = useRouter()
@@ -100,18 +76,14 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
     setPreviewUrls((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleFalConfigChange = (field: keyof FalConfig, value: string | number) => {
-    setFalConfig((prev) => ({ ...prev, [field]: value }))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
       setError("O nome do clone é obrigatório.")
       return
     }
-    if (!falConfig.triggerWord.trim()) {
-      setError("A palavra-gatilho é obrigatória.")
+    if (!triggerWord.trim()) {
+      setError("A palavra-gatilho (trigger) é obrigatória.")
       return
     }
     if (images.length < 3) {
@@ -121,125 +93,60 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
 
     setIsLoading(true)
     setError(null)
-    setTrainingStatus("Iniciando treinamento...")
-    setTrainingProgress(0)
+    setSuccessMessage(null)
 
     const formData = new FormData()
     formData.append("name", name)
     formData.append("description", description)
     formData.append("userId", userId)
     images.forEach((image, index) => formData.append(`image-${index}`, image))
-
-    // Append Fal.ai config
-    formData.append("triggerWord", falConfig.triggerWord)
-    formData.append("steps", falConfig.steps.toString())
-    formData.append("batchSize", falConfig.batchSize.toString())
-    formData.append("learningRate", falConfig.learningRate.toString())
-    formData.append("numEpochs", falConfig.numEpochs.toString())
-    formData.append("guidanceScale", falConfig.guidanceScale.toString())
-    formData.append("seed", falConfig.seed.toString())
+    formData.append("triggerWord", triggerWord)
+    formData.append("steps", steps.toString())
 
     try {
       const result = await createClone(formData)
-      if (result.error || !result.falTrainId) {
-        setError(result.error || "Falha ao iniciar o treinamento.")
-        setTrainingStatus(`Falha: ${result.error || "Erro desconhecido"}`)
-        setIsLoading(false)
-        return
+      if (result.error || !result.clone) {
+        setError(result.error || "Falha ao criar o clone.")
+        toast({
+          title: "Erro no Treinamento",
+          description: result.error || "Ocorreu um erro desconhecido.",
+          variant: "destructive",
+        })
+      } else {
+        setSuccessMessage(`Clone "${result.clone.name}" treinado com sucesso! URL do LoRA: ${result.clone.model_id}`)
+        toast({
+          title: "Clone Treinado!",
+          description: `Seu clone "${result.clone.name}" está pronto.`,
+        })
+        // Optionally redirect or clear form
+        router.push(`/clones/${result.clone.id}`) // Navigate to the clone detail page
+        router.refresh()
       }
-      setFalTrainId(result.falTrainId)
-      setTrainingStatus("Treinamento em processamento...")
-      toast({
-        title: "Treinamento iniciado!",
-        description: "Seu clone está sendo treinado. Você pode acompanhar o progresso aqui.",
-      })
     } catch (err) {
       console.error("Erro ao criar clone:", err)
       setError("Ocorreu um erro inesperado.")
-      setTrainingStatus("Falha ao iniciar.")
+      toast({
+        title: "Erro Inesperado",
+        description: "Não foi possível completar o treinamento.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
     }
   }
-
-  // Polling for Fal.ai status
-  useEffect(() => {
-    if (!falTrainId || !isLoading) return
-
-    const intervalId = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/fal-status/${falTrainId}`)
-        if (!res.ok) {
-          const errorData = await res.json()
-          console.warn("Polling error:", errorData.error)
-          // Potentially stop polling on certain errors or after too many attempts
-          return
-        }
-        const data = await res.json()
-        setTrainingProgress(data.metrics?.progress || trainingProgress)
-
-        if (data.status === "processing") {
-          setTrainingStatus(`Processando... (${(data.metrics?.progress || 0).toFixed(0)}%)`)
-        } else if (data.status === "succeeded") {
-          setTrainingStatus("Clone treinado com sucesso!")
-          setTrainingProgress(100)
-          setIsLoading(false)
-          clearInterval(intervalId)
-          toast({ title: "Clone Treinado!", description: "Seu novo clone está pronto para ser usado." })
-          router.push(`/clones/${data.output?.model_id || ""}`) // Or to the specific clone page if you have one by Fal model ID
-          router.refresh()
-        } else if (data.status === "failed") {
-          setTrainingStatus(`Falha no treinamento: ${data.error?.message || "Erro desconhecido"}`)
-          setError(data.error?.message || "O treinamento falhou.")
-          setIsLoading(false)
-          clearInterval(intervalId)
-        } else if (data.status) {
-          // Other statuses like "queued"
-          setTrainingStatus(`Status: ${data.status} (${(data.metrics?.progress || 0).toFixed(0)}%)`)
-        }
-      } catch (error) {
-        console.error("Error polling Fal.ai status:", error)
-        // Potentially stop polling
-      }
-    }, 5000) // Poll every 5 seconds
-
-    return () => clearInterval(intervalId)
-  }, [falTrainId, isLoading, router, trainingProgress])
 
   useEffect(() => {
     setImageQualityMet(images.length >= 3 && images.length <= 10)
   }, [images.length])
 
-  if (isLoading && falTrainId) {
-    return (
-      <Card className="w-full max-w-lg mx-auto">
-        <CardHeader>
-          <CardTitle>Treinando seu Clone: {name}</CardTitle>
-          <CardDescription>Aguarde enquanto a IA aprende seu estilo. Isso pode levar alguns minutos.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ImageQualityIndicators imageCount={images.length} />
-          <div className="flex items-center space-x-2 pt-4">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <p className="text-sm text-muted-foreground">{trainingStatus}</p>
-          </div>
-          <Progress value={trainingProgress} className="w-full" />
-          {error && (
-            <div className="flex items-center p-3 space-x-2 text-sm text-red-600 border border-red-200 rounded-md bg-red-50 dark:text-red-400 dark:border-red-900 dark:bg-red-950/50">
-              <AlertCircle className="w-4 h-4" />
-              <span>{error}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Criar Novo Clone</CardTitle>
-          <CardDescription>Treine um modelo com seu estilo único. Envie de 3 a 10 imagens.</CardDescription>
+          <CardTitle>Criar Novo Clone (Treinamento Rápido)</CardTitle>
+          <CardDescription>
+            Treine um modelo LoRA rapidamente com seu estilo. Envie de 3 a 10 imagens públicas.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           {error && (
@@ -248,12 +155,18 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
               <span>{error}</span>
             </div>
           )}
+          {successMessage && (
+            <div className="flex items-center p-3 space-x-2 text-sm text-green-600 border border-green-200 rounded-md bg-green-50 dark:text-green-400 dark:border-green-900 dark:bg-green-950/50">
+              <CheckCircle className="w-4 h-4" />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="name">Nome do Clone</Label>
             <Input
               id="name"
-              placeholder="Ex: Meu Estilo Artístico"
+              placeholder="Ex: MeuEstiloRapido"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
@@ -299,6 +212,9 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
                 </Button>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Estas imagens serão enviadas para um armazenamento público para o treinamento.
+            </p>
           </div>
 
           {previewUrls.length > 0 && (
@@ -341,131 +257,31 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="triggerWord">Palavra-Gatilho</Label>
+            <Label htmlFor="triggerWord">Palavra-Gatilho (Trigger)</Label>
             <Input
               id="triggerWord"
-              placeholder="Ex: meuEstiloUnico"
-              value={falConfig.triggerWord}
-              onChange={(e) => handleFalConfigChange("triggerWord", e.target.value)}
+              placeholder="Ex: meuEstiloTrigger"
+              value={triggerWord}
+              onChange={(e) => setTriggerWord(e.target.value)}
               maxLength={30}
               disabled={isLoading}
             />
-            <p className="text-xs text-gray-500">
-              Palavra para ativar seu clone ao gerar imagens. Sem espaços, use camelCase ou underscore.
-            </p>
+            <p className="text-xs text-gray-500">Palavra para identificar seu clone. Sem espaços.</p>
           </div>
 
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
-              className="text-sm p-0 h-auto"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Configurações Avançadas de Treinamento{" "}
-              {showAdvancedConfig ? <X className="w-4 h-4 ml-1" /> : <Info className="w-4 h-4 ml-1" />}
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="steps">Passos de Treinamento (Steps): {steps}</Label>
+            <Slider
+              id="steps"
+              min={100}
+              max={1000}
+              step={50}
+              value={[steps]}
+              onValueChange={(val) => setSteps(val[0])}
+              disabled={isLoading}
+            />
+            <p className="text-xs text-muted-foreground">Padrão: 750. Ajuste para qualidade vs. velocidade.</p>
           </div>
-
-          {showAdvancedConfig && (
-            <Card className="bg-muted/50">
-              <CardContent className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="steps">Passos (Steps): {falConfig.steps}</Label>
-                  <Slider
-                    id="steps"
-                    min={50}
-                    max={150}
-                    step={25}
-                    value={[falConfig.steps]}
-                    onValueChange={(val) => handleFalConfigChange("steps", val[0])}
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Padrão: 100. Mais steps = maior fidelidade, maior custo.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="batchSize">Batch Size</Label>
-                    <Select
-                      value={falConfig.batchSize.toString()}
-                      onValueChange={(val) => handleFalConfigChange("batchSize", Number.parseInt(val))}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="4">4 (Padrão)</SelectItem>
-                        <SelectItem value="8">8</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Padrão: 4.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="numEpochs">Épocas (Num Epochs)</Label>
-                    <Select
-                      value={falConfig.numEpochs.toString()}
-                      onValueChange={(val) => handleFalConfigChange("numEpochs", Number.parseInt(val))}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="3">3 (Padrão)</SelectItem>
-                        <SelectItem value="4">4</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Padrão: 3.</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="learningRate">
-                    Taxa de Aprendizado (LR): {falConfig.learningRate.toExponential(1)}
-                  </Label>
-                  <Input
-                    type="number"
-                    id="learningRate"
-                    step="0.00001"
-                    value={falConfig.learningRate}
-                    onChange={(e) => handleFalConfigChange("learningRate", Number.parseFloat(e.target.value))}
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">Padrão: 1e-4.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guidanceScale">Escala de Orientação: {falConfig.guidanceScale.toFixed(1)}</Label>
-                  <Slider
-                    id="guidanceScale"
-                    min={5.0}
-                    max={10.0}
-                    step={0.1}
-                    value={[falConfig.guidanceScale]}
-                    onValueChange={(val) => handleFalConfigChange("guidanceScale", val[0])}
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">Padrão: 7.5. Define fidelidade ao estilo.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="seed">Seed</Label>
-                  <Input
-                    type="number"
-                    id="seed"
-                    value={falConfig.seed}
-                    onChange={(e) => handleFalConfigChange("seed", Number.parseInt(e.target.value))}
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">Padrão: 2025. Para reprodutibilidade.</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           <div className="pt-4 border-t">
             <Button type="submit" className="w-full" disabled={isLoading || !imageQualityMet}>
@@ -474,7 +290,7 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Treinando...
                 </>
               ) : (
-                "Iniciar Treinamento do Clone"
+                "Iniciar Treinamento Rápido do Clone"
               )}
             </Button>
           </div>
@@ -485,12 +301,11 @@ export default function CreateCloneForm({ userId }: CreateCloneFormProps) {
         <div className="flex items-start">
           <Info className="w-5 h-5 text-blue-500 dark:text-blue-400 mt-0.5" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Dicas para Melhores Clones</h3>
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Treinamento Rápido de LoRA</h3>
             <ul className="mt-2 text-sm text-blue-700 dark:text-blue-300 list-disc list-inside space-y-1">
-              <li>Use imagens de alta qualidade (mín. 512x512px).</li>
-              <li>Inclua variações de ângulos, expressões e iluminação.</li>
-              <li>Evite fundos muito poluídos ou com muitas pessoas.</li>
-              <li>O treinamento pode levar de 5 a 10 minutos.</li>
+              <li>Este método usa o endpoint `flux-lora-fast-training` da Fal.ai.</li>
+              <li>Requer que as imagens sejam publicamente acessíveis (serão enviadas para o armazenamento).</li>
+              <li>O resultado é um link direto para download do arquivo LoRA (.zip).</li>
             </ul>
           </div>
         </div>
