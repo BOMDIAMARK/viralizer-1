@@ -13,6 +13,7 @@
     "@cloudflare/workers-types": "latest",
     "@electric-sql/pglite": "latest",
     "@emotion/is-prop-valid": "latest",
+    "@fal-ai/client": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@libsql/client": "latest",
     "@libsql/client-wasm": "latest",
