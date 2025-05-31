@@ -15,7 +15,7 @@ interface RelatedImagesProps {
   currentStyle: string
 }
 
-export default function RelatedImages({ images, currentStyle }: RelatedImagesProps) {
+export function RelatedImages({ images, currentStyle }: RelatedImagesProps) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Outras imagens no estilo {currentStyle}</h2>

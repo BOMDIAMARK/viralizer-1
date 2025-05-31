@@ -39,7 +39,7 @@ interface ImageQualityIndicatorsProps {
   // In a real app, you'd analyze image dimensions and potentially use AI for diversity
 }
 
-export default function ImageQualityIndicators({ imageCount }: ImageQualityIndicatorsProps) {
+export function ImageQualityIndicators({ imageCount }: ImageQualityIndicatorsProps) {
   const quantityValid = imageCount >= 3 && imageCount <= 10
   // Simulate resolution: assume valid if enough images are provided for now
   const resolutionValid = imageCount >= 3

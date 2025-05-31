@@ -191,3 +191,25 @@ export async function generateImageWithFalFluxLoRA(
     throw new Error(`Fal.ai inference failed: ${error.message || "Unknown error from Fal.ai client."}`)
   }
 }
+
+// Placeholder for getFalTrainStatus if it's still imported elsewhere
+// This function was part of an older Fal.ai integration.
+export async function getFalTrainStatus(trainId: string): Promise<any> {
+  console.warn(
+    `getFalTrainStatus for trainId ${trainId} is likely deprecated. Fal.subscribe handles status internally.`,
+  )
+  // Attempt to use fal.subscribe to get status if possible, or return a placeholder
+  // This is a rough adaptation; the original getFalTrainStatus might have had a different API endpoint.
+  try {
+    // This is a guess. The `fal.subscribe` might not be suitable for arbitrary trainId status checks
+    // if that trainId is from a different Fal.ai API.
+    // If the trainId is a request_id from a fal.subscribe call, this might work if the client
+    // has a method to get status by request_id, but fal.subscribe itself initiates and polls.
+    // For now, returning a placeholder status.
+    // const status = await fal.subscribe(/* model? */, { requestId: trainId, poll: false }); // This is not a real API
+    return { status: "unknown_via_deprecated_getFalTrainStatus", id: trainId, message: "This function is deprecated." }
+  } catch (error) {
+    console.error(`Error in deprecated getFalTrainStatus for ${trainId}:`, error)
+    return { status: "error_in_deprecated_function", id: trainId, error: (error as Error).message }
+  }
+}

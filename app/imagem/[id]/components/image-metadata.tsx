@@ -19,7 +19,7 @@ interface ImageMetadataProps {
   image: Image
 }
 
-export default function ImageMetadata({ image }: ImageMetadataProps) {
+export function ImageMetadata({ image }: ImageMetadataProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
