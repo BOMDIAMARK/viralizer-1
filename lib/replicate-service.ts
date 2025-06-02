@@ -56,18 +56,22 @@ export async function createReplicatePrediction(options: ReplicatePredictionOpti
   try {
     const modelString = options.modelIdentifier || MODELS.textToImage // Default or specified
     const [owner, nameAndVersion] = modelString.split("/")
-    const [name, version] = nameAndVersion.split(":")
+    const [name, versionFromIdentifier] = nameAndVersion.split(":")
 
     const predictionData: any = {
       input: options.input,
     }
 
+    // Prioritize options.version if explicitly passed, otherwise use version from modelIdentifier
     if (options.version) {
       predictionData.version = options.version
-    } else if (version) {
-      predictionData.version = version
+    } else if (versionFromIdentifier) {
+      predictionData.version = versionFromIdentifier
     } else {
-      throw new Error("Model version must be provided either in modelIdentifier or as options.version")
+      // This case should ideally not be hit if modelIdentifiers in MODELS are complete
+      throw new Error(
+        `Model version not found. Ensure modelIdentifier ('${modelString}') includes a version hash or options.version is provided.`,
+      )
     }
 
     if (options.webhook) predictionData.webhook = options.webhook
@@ -131,6 +135,7 @@ export async function generateImageFromText(
   }
 
   return createReplicatePrediction({
+    modelIdentifier: MODELS.textToImage,
     version,
     input,
     ...(options.webhook && { webhook: options.webhook, webhook_events_filter: ["completed"] }),
@@ -156,7 +161,8 @@ export async function editImageWithFlux(
   }
 
   return createReplicatePrediction({
-    version,
+    modelIdentifier: MODELS.fluxKontextMax,
+    version, // Can be kept or removed if modelIdentifier is always full
     input,
     ...(options.webhook && { webhook: options.webhook, webhook_events_filter: ["completed"] }),
   })
@@ -185,7 +191,8 @@ export async function generateVideoFromPrompt(
   }
 
   return createReplicatePrediction({
-    version,
+    modelIdentifier: MODELS.videoGeneration,
+    version, // Can be kept or removed
     input,
     ...(options.webhook && { webhook: options.webhook, webhook_events_filter: ["completed"] }),
   })
