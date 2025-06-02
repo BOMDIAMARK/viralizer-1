@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import type { User } from "@supabase/supabase-js"
+import type { User, Session } from "@supabase/supabase-js" // Ensure Session is imported if used
 
 /**
  * Retrieves the Supabase server client for server-side operations.
@@ -40,6 +40,11 @@ function createSupabaseServerClient() {
  * @returns {Promise<User | null>} The Supabase user object or null if not authenticated.
  */
 export async function getCurrentUser(): Promise<User | null> {
+  // Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are available
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("Supabase URL or Anon Key is not defined. Cannot get current user.")
+    return null
+  }
   const supabase = createSupabaseServerClient()
   try {
     const {
@@ -56,7 +61,12 @@ export async function getCurrentUser(): Promise<User | null> {
  * Gets the current session from Supabase on the server.
  * @returns {Promise<Session | null>} The Supabase session object or null if no active session.
  */
-export async function getCurrentSession() {
+export async function getCurrentSession(): Promise<Session | null> {
+  // Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are available
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("Supabase URL or Anon Key is not defined. Cannot get current session.")
+    return null
+  }
   const supabase = createSupabaseServerClient()
   try {
     const {
@@ -71,16 +81,12 @@ export async function getCurrentSession() {
 
 /**
  * The `auth` object provides a consistent interface for authentication tasks.
- * This matches the error message expecting `auth` as a named export.
+ * This is the named export the error message is looking for.
  */
 export const auth = {
   getUser: getCurrentUser,
   getSession: getCurrentSession,
-  // You can add other common auth functions here, e.g., signOut
-  // signOut: async () => {
-  //   const supabase = createSupabaseServerClient();
-  //   return supabase.auth.signOut();
-  // }
 }
 
-export default auth
+// Default export can also be provided if needed elsewhere, but the error specifically asks for a named export.
+// export default auth;
