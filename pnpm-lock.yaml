@@ -145,7 +145,7 @@ importers:
         version: 7.6.13
       '@types/pg':
         specifier: latest
-        version: 8.15.3
+        version: 8.15.4
       '@types/sql.js':
         specifier: latest
         version: 1.4.9
@@ -193,7 +193,7 @@ importers:
         version: 0.31.1
       drizzle-orm:
         specifier: latest
-        version: 0.44.1(242624adf4f3ea81a6c237dbdc7ec47a)
+        version: 0.44.1(8bf68fa145003d4059089265cb8e9d4e)
       embla-carousel-react:
         specifier: 8.5.1
         version: 8.5.1(react@19.0.0)
@@ -2895,8 +2895,8 @@ packages:
   '@types/pg@8.11.6':
     resolution: {integrity: sha512-/2WmmBXHLsfRqzfHW7BNZ8SbYzE8OSk7i3WjFYvfgRHj7S1xj+16Je5fUKv3lVdVzk/zn9TXOqf+avFCFIE0yQ==}
 
-  '@types/pg@8.15.3':
-    resolution: {integrity: sha512-/566mCD6naXuDdCO9LN9IBGYuuLfmCbew3PjdDT1LTQNAWWNYk/zTSNQ4I8oq4F4tN9p4UWQieJyFmuvK98A4A==}
+  '@types/pg@8.15.4':
+    resolution: {integrity: sha512-I6UNVBAoYbvuWkkU3oosC8yxqH21f4/Jc4DK71JLG3dT2mdlGe1z+ep/LQGXaKaOgcvUrsQoPRqfgtMcvZiJhg==}
 
   '@types/phoenix@1.6.6':
     resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
@@ -7672,7 +7672,7 @@ snapshots:
   '@neondatabase/serverless@1.0.0':
     dependencies:
       '@types/node': 22.15.29
-      '@types/pg': 8.15.3
+      '@types/pg': 8.15.4
 
   '@next/env@15.2.4': {}
 
@@ -9134,7 +9134,7 @@ snapshots:
       pg-protocol: 1.10.0
       pg-types: 4.0.2
 
-  '@types/pg@8.15.3':
+  '@types/pg@8.15.4':
     dependencies:
       '@types/node': 22.0.0
       pg-protocol: 1.10.0
@@ -9885,7 +9885,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.1(242624adf4f3ea81a6c237dbdc7ec47a):
+  drizzle-orm@0.44.1(8bf68fa145003d4059089265cb8e9d4e):
     optionalDependencies:
       '@aws-sdk/client-rds-data': 3.821.0
       '@cloudflare/workers-types': 4.20250601.0
@@ -9899,7 +9899,7 @@ snapshots:
       '@prisma/client': 6.8.2(typescript@5.0.2)
       '@tidbcloud/serverless': 0.2.0
       '@types/better-sqlite3': 7.6.13
-      '@types/pg': 8.15.3
+      '@types/pg': 8.15.4
       '@types/sql.js': 1.4.9
       '@upstash/redis': 1.34.9
       '@vercel/postgres': 0.10.0
