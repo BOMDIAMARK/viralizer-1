@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import DashboardStats from "./components/dashboard-stats"
 import RecentImages from "./components/recent-images"
+import CostMapSevenDays from "./components/cost-map-seven-days"
 
 export default async function DashboardPage() {
   const supabase = createServerClient()
@@ -61,6 +62,8 @@ export default async function DashboardPage() {
         subscription={userData?.is_premium ? "premium" : "free"}
         imagesCount={recentImages?.length || 0}
       />
+
+      <CostMapSevenDays />
 
       <RecentImages images={recentImages || []} />
 
